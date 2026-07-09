@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarShare - Quản Lí Nhóm Xe Đồng Sở Hữu</title>
+    <link rel="stylesheet" th:href="@{/ext/css/staff-style.css}">
+    <link rel="stylesheet" th:href="@{/ext/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/ext/css/header.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+<div class="container">
+    <!-- Sidebar -->
+    <div th:replace="ext/fragments/sidebar :: sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <div th:replace="ext/fragments/header :: header" th:with="pageTitle='Quản Lý Nhóm Xe Đồng Sở Hữu', pageDescription='Quản lý thông tin nhóm xe'"></div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-user-check"></i></div>
+                <div class="stat-info">
+                    <h3>Tổng nhóm</h3>
+                    <span class="stat-number" th:text="${totalGroups}">12</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <h3>Nhóm đang hoạt động</h3>
+                    <span class="stat-number" th:text="${activeGroups}">8</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <form action="/ext/admin/staff-management" method="get" id="filterForm">
+            <input type="hidden" name="page" value="1" id="hiddenPage">
+            <div class="filter-section">
+                <div class="filter-card">
+                    <div class="filter-row">
+                        <!-- Tìm nhóm theo tên -->
+                        <div class="filter-group">
+                            <label>Tìm nhóm...</label>
+                            <input type="text" th:value="${searchQuery}" name="searchQuery" placeholder="Nhập tên nhóm..." 
+                                   onkeypress="if(event.key === 'Enter') { event.preventDefault(); document.getElementById('hiddenPage').value='1'; document.getElementById('filterForm').submit(); }">
+                        </div>
+
+                        <!-- Trạng thái -->
+                        <div class="filter-group">
+                            <label>Trạng thái</label>
+                            <select name="statusFilter" th:value="${statusFilter}" onchange="document.getElementById('hiddenPage').value='1'; document.getElementById('filterForm').submit();">
+                                <option value="Tất cả" th:selected="${statusFilter == 'Tất cả'}">Tất cả</option>
+                                <option value="active" th:selected="${statusFilter == 'active'}">Hoạt động</option>
+                                <option value="inactive" th:selected="${statusFilter == 'inactive'}">Tạm dừng</option>
+                            </select>
+                        </div>
+
+                        <!-- Nút lọc -->
+                        <button class="btn-filter" type="submit" onclick="document.getElementById('hiddenPage').value='1';">
+                            <i class="fas fa-filter"></i> Lọc
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- Hiển thị thông báo khi không có dữ liệu -->
+        <div th:if="${noDataMessage != null}">
+            <div class="alert alert-warning" th:text="${noDataMessage}">Không tìm thấy nhóm xe phù hợp.</div>
+        </div>
+
+        <!-- Hiển thị thông báo xóa nhóm xe (thành công hoặc lỗi) -->
+        <div th:if="${deleteStatusMessage != null}">
+            <div th:class="${deleteSuccess ? 'alert alert-success' : 'alert alert-danger'}"
+                 th:text="${deleteStatusMessage}">
+                Nhóm xe đã được xóa thành công.
+            </div>
+        </div>
+
+        <!-- Hiển thị thông báo cập nhật nhóm xe (thành công hoặc lỗi) -->
+        <div th:if="${updateStatusMessage != null}">
+            <div th:class="${updateSuccess ? 'alert alert-success' : 'alert alert-danger'}"
+                 th:text="${updateStatusMessage}">
+                Nhóm xe đã được cập nhật thành công.
+            </div>
+        </div>
+
+        <!-- Hiển thị nhóm xe -->
+        <div class="staff-list">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Trạng Thái</th>
+                    <th>Tên Nhóm</th>
+                    <th>Hành Động</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- Hàng thêm nhóm xe -->
+                <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
+                    <td colspan="2" style="text-align: right; font-weight: 600; padding: 12px;">
+                        Thêm nhóm xe mới:
+                    </td>
+                    <td style="padding: 12px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnAddGroup" style="padding: 6px 12px; margin-right: 5px;">
+                            <i class="fas fa-plus"></i> Thêm Nhóm Xe
+                        </button>
+                    </td>
+                </tr>
+                <tr th:each="group : ${filteredGroups}">
+                    <!-- Trạng thái -->
+                    <td>
+                        <span th:text="${group.active} == 'active' ? 'Hoạt động' : 'Tạm dừng'">Hoạt động</span>
+                    </td>
+
+                    <!-- Tên nhóm xe -->
+                    <td th:text="${group.name}">Nhóm Nguyễn Gia Định</td>
+
+                    <!-- Hành động -->
+                    <td>
+                        <a href="#"
+                           class="btn btn-info btn-sm btn-view-group"
+                           th:href="@{/ext/admin/staff-management(viewGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}">
+                            <i class="fas fa-eye"></i> Xem
+                        </a>
+                        <a href="#"
+                           class="btn btn-warning btn-sm btn-edit-group"
+                           th:data-group-id="${group.groupId}"
+                           th:data-group-name="${group.name}"
+                           th:data-active="${group.active}"
+                           th:data-description="${group.description != null ? group.description : ''}">
+                            <i class="fas fa-edit"></i> Sửa
+                        </a>
+                        <a href="#"
+                           th:href="@{/ext/admin/staff-management(deleteGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm('Bạn có chắc chắn muốn xóa nhóm này?')">
+                            <i class="fas fa-trash"></i> Xóa
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${filteredGroups == null or filteredGroups.isEmpty()}">
+                    <td colspan="3" style="text-align: center; padding: 40px; color: #6B7280;">
+                        Không có dữ liệu nhóm xe
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" th:if="${totalPages > 0}">
+            <div class="pagination-info">
+                Hiển thị <span th:text="${startIndex}">1</span>-<span th:text="${endIndex}">10</span> 
+                trong tổng số <span th:text="${totalFiltered}">0</span> nhóm xe
+            </div>
+            <div class="pagination-buttons">
+                <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage > 1 ? currentPage - 1 : 1})}"
+                   class="prev"
+                   th:classappend="${currentPage == 1} ? 'disabled' : ''"
+                   th:if="${currentPage > 1}">
+                    <i class="fas fa-chevron-left"></i> Trước
+                </a>
+                <!-- Hiển thị các nút trang với logic thông minh -->
+                <span th:if="${totalPages <= 7}">
+                    <a th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                       th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${pageNum})}"
+                       th:class="${pageNum == currentPage} ? 'active' : ''"
+                       th:text="${pageNum}">1</a>
+                </span>
+                <span th:if="${totalPages > 7}">
+                    <!-- Trang đầu -->
+                    <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=1)}"
+                       th:class="${currentPage == 1} ? 'active' : ''">1</a>
+                    <!-- Dấu ... trước khi có trang hiện tại -->
+                    <span th:if="${currentPage > 3}">...</span>
+                    <!-- Các trang xung quanh trang hiện tại -->
+                    <span th:if="${currentPage > 2}">
+                        <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage - 1})}"
+                           th:text="${currentPage - 1}">1</a>
+                    </span>
+                    <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
+                       class="active"
+                       th:text="${currentPage}">1</a>
+                    <span th:if="${currentPage < totalPages - 1}">
+                        <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage + 1})}"
+                           th:text="${currentPage + 1}">1</a>
+                    </span>
+                    <!-- Dấu ... sau trang hiện tại -->
+                    <span th:if="${currentPage < totalPages - 2}">...</span>
+                    <!-- Trang cuối -->
+                    <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${totalPages})}"
+                       th:class="${currentPage == totalPages} ? 'active' : ''"
+                       th:text="${totalPages}">1</a>
+                </span>
+                <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage < totalPages ? currentPage + 1 : totalPages})}"
+                   class="next"
+                   th:classappend="${currentPage == totalPages} ? 'disabled' : ''"
+                   th:if="${currentPage < totalPages}">
+                    Sau <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="pagination" th:if="${totalPages == 0}">
+            <div class="pagination-info">
+                Không có dữ liệu để hiển thị
+            </div>
+        </div>
+
+        <!-- Modal Thêm Nhóm Xe -->
+        <div id="addGroupModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus-circle"></i> Thêm Nhóm Xe Mới</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="addGroupForm">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> Mã Nhóm Xe <span style="color: red;">*</span></label>
+                            <input type="text" id="addGroupId" name="groupId" required placeholder="VD: GRP001" maxlength="20">
+                            <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                                Nhập mã nhóm xe duy nhất (VD: GRP001, GRP002...)
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-tag"></i> Tên Nhóm Xe <span style="color: red;">*</span></label>
+                            <input type="text" id="addGroupName" name="name" required placeholder="Nhập tên nhóm xe">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-info-circle"></i> Trạng Thái</label>
+                            <select id="addActive" name="active">
+                                <option value="active" selected>Hoạt động</option>
+                                <option value="inactive">Tạm dừng</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-align-left"></i> Mô Tả</label>
+                            <textarea id="addDescription" name="description" rows="3" placeholder="Nhập mô tả (tùy chọn)"></textarea>
+                        </div>
+
+                        <!-- Phần thêm xe vào nhóm -->
+                        <div class="form-group" style="margin-top: 30px; border-top: 2px solid #E5E7EB; padding-top: 20px;">
+                            <h4 style="margin-bottom: 15px; color: #4F46E5; font-size: 16px;">
+                                <i class="fas fa-car"></i> Thêm Xe Vào Nhóm
+                            </h4>
+                            <p style="margin-bottom: 15px; color: #6B7280; font-size: 14px;">
+                                Mỗi nhóm chỉ có đúng 1 xe duy nhất. Vui lòng nhập thông tin xe bên dưới.
+                            </p>
+                            <div id="addVehiclesToAddContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
+                                <!-- Form nhập xe sẽ được thêm vào đây - tự động hiển thị 1 form -->
+                            </div>
+                        </div>
+
+                        <div id="addGroupStatusMessage" style="display: none; margin-top: 15px;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelAddGroupBtn">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Thêm Nhóm Xe</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Sửa Nhóm Xe -->
+        <div id="editGroupModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Sửa Thông Tin Nhóm Xe</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="editGroupForm" method="post" action="">
+                    <input type="hidden" id="editGroupId" name="groupId">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tên Nhóm Xe</label>
+                        <input type="text" id="editGroupName" name="name" required placeholder="Nhập tên nhóm xe">
+                    </div>
+
+                    <!-- Phần thêm/xem xe trong nhóm -->
+                    <div class="form-group" style="margin-top: 30px; border-top: 2px solid #E5E7EB; padding-top: 20px;">
+                        <label style="font-weight: 600; color: #4F46E5; margin-bottom: 15px; display: block;">
+                            <i class="fas fa-car"></i> Xe Trong Nhóm
+                            <small style="font-weight: normal; color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                                Mỗi nhóm chỉ có đúng 1 xe duy nhất. Xem chi tiết xe bằng nút "Xem" ở bảng danh sách.
+                            </small>
+                        </label>
+                        <div id="vehiclesToAddContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
+                            <p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">
+                                Sử dụng nút "Xem" để xem và quản lý xe trong nhóm.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Trạng Thái</label>
+                        <select id="editActive" name="active" required>
+                            <option value="active">Hoạt động</option>
+                            <option value="inactive">Tạm dừng</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-file-alt"></i> Mô Tả</label>
+                        <textarea id="editDescription" name="description" rows="3" placeholder="Nhập mô tả nhóm xe"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Xem Chi Tiết Nhóm Xe -->
+        <div id="viewGroupModal" class="modal" th:if="${showViewModal}" style="display: block !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background-color: rgba(0,0,0,0.5) !important;">
+            <div class="modal-content" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h3><i class="fas fa-info-circle"></i> Chi Tiết Nhóm Xe</h3>
+                    <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
+                       class="close-modal" style="text-decoration: none; color: white; font-size: 28px; cursor: pointer; font-weight: bold;">&times;</a>
+                </div>
+                <div class="modal-body" style="padding: 24px;" th:if="${viewGroup != null}">
+                    <!-- Thông tin nhóm xe -->
+                    <div id="groupDetails" style="margin-bottom: 30px;">
+                        <h4 style="margin-bottom: 20px; color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px;">
+                            <i class="fas fa-users"></i> Thông Tin Nhóm Xe
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                            <div class="detail-item">
+                                <label><strong>Mã Nhóm:</strong></label>
+                                <span th:text="${viewGroup.groupId}">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <label><strong>Tên Nhóm:</strong></label>
+                                <span th:text="${viewGroup.name}">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <label><strong>Trạng Thái:</strong></label>
+                                <span th:text="${viewGroup.active == 'active'} ? 'Hoạt động' : 'Tạm dừng'">-</span>
+                            </div>
+                            <div class="detail-item" style="grid-column: 1 / -1;">
+                                <label><strong>Mô Tả:</strong></label>
+                                <span th:text="${(viewGroup.description != null and !viewGroup.description.isEmpty()) ? viewGroup.description : 'Không có mô tả'}">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách xe trong nhóm -->
+                    <div id="vehiclesList">
+                        <h4 style="margin-bottom: 20px; color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px;">
+                            <i class="fas fa-car"></i> Danh Sách Xe Trong Nhóm
+                        </h4>
+                        <div id="vehiclesTableContainer">
+                            <table class="table" style="width: 100%;">
+                                <thead>
+                                <tr>
+                                    <th>Mã Xe</th>
+                                    <th>Loại Xe</th>
+                                    <th>Biển Số</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Thao Tác</th>
+                                </tr>
+                                </thead>
+                                <tbody id="vehiclesTableBody">
+                                <tr th:if="${viewGroupVehicles == null or viewGroupVehicles.isEmpty()}">
+                                    <td colspan="5" style="text-align: center; padding: 20px; color: #64748B;">
+                                        Nhóm xe này chưa có xe nào.
+                                    </td>
+                                </tr>
+                                <tr th:each="vehicle : ${viewGroupVehicles}"
+                                    th:if="${viewGroupVehicles != null and !viewGroupVehicles.isEmpty()}"
+                                    th:attr="data-vehicle-id=${vehicle['vehicleId']}"
+                                    class="vehicle-row-view">
+                                    <td th:text="${vehicle['vehicleId']}">-</td>
+                                    <td>
+                                        <span class="vehicle-type-display" th:text="${vehicle['vehicleType']}">-</span>
+                                        <input type="text"
+                                               class="vehicle-type-edit"
+                                               th:value="${vehicle['vehicleType']}"
+                                               style="display: none; width: 100%; padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 4px;">
+                                    </td>
+                                    <td>
+                                        <span class="vehicle-number-display" th:text="${vehicle['vehicleNumber']}">-</span>
+                                        <input type="text"
+                                               class="vehicle-number-edit"
+                                               th:value="${vehicle['vehicleNumber']}"
+                                               style="display: none; width: 100%; padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 4px;">
+                                    </td>
+                                    <td>
+                                        <span class="vehicle-status-display" th:text="${vehicle['status']}">-</span>
+                                        <select class="vehicle-status-edit"
+                                                style="display: none; width: 100%; padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 4px;">
+                                            <option value="available" th:selected="${vehicle['status'] == 'available'}">Sẵn sàng</option>
+                                            <option value="in-use" th:selected="${vehicle['status'] == 'in-use'}">Đang sử dụng</option>
+                                            <option value="maintenance" th:selected="${vehicle['status'] == 'maintenance'}">Bảo trì</option>
+                                            <option value="inactive" th:selected="${vehicle['status'] == 'inactive'}">Không hoạt động</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div class="vehicle-edit-buttons" style="display: flex; gap: 5px;">
+                                            <button type="button"
+                                                    class="btn btn-info btn-sm btn-edit-vehicle-view"
+                                                    style="padding: 4px 8px; font-size: 12px;">
+                                                <i class="fas fa-edit"></i> Sửa
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-success btn-sm btn-save-vehicle-view"
+                                                    style="display: none; padding: 4px 8px; font-size: 12px;">
+                                                <i class="fas fa-save"></i> Lưu
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-secondary btn-sm btn-cancel-vehicle-view"
+                                                    style="display: none; padding: 4px 8px; font-size: 12px;">
+                                                <i class="fas fa-times"></i> Hủy
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a th:href="@{/ext/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
+                       class="btn btn-secondary">Đóng</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Thêm Xe Vào Nhóm -->
+        <div id="addVehiclesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus-circle"></i> Thêm Xe Vào Nhóm</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="addVehiclesForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="addVehiclesGroupId">
+                        <input type="hidden" id="addVehiclesCount">
+                        <p style="margin-bottom: 20px; color: #6B7280;">
+                            Vui lòng nhập thông tin cho <strong id="vehiclesToAddCount">0</strong> xe mới cần thêm vào nhóm.
+                        </p>
+                        <div id="addVehiclesContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
+                            <!-- Form nhập xe sẽ được thêm vào đây -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelAddVehiclesBtn">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Thêm Xe</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Chọn Xe Xóa -->
+        <div id="deleteVehiclesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-trash-alt"></i> Chọn Xe Cần Xóa</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="deleteVehiclesForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="deleteVehiclesGroupId">
+                        <input type="hidden" id="deleteVehiclesCount">
+                        <p style="margin-bottom: 20px; color: #6B7280;">
+                            Vui lòng chọn <strong id="vehiclesToDeleteCount">0</strong> xe cần xóa khỏi nhóm.
+                        </p>
+                        <div id="deleteVehiclesContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
+                            <!-- Danh sách xe để chọn sẽ được thêm vào đây -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelDeleteVehiclesBtn">Hủy</button>
+                        <button type="submit" class="btn btn-danger" id="deleteVehiclesSubmitBtn">Xóa Các Xe Đã Chọn</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Thông báo cập nhật -->
+        <div id="updateStatusMessage" style="display: none;"></div>
+
+    </main>
+</div>
+
+<!-- Script cho modal sửa - Đặt các hàm global trước -->
+<script>
+// Đặt các hàm ở global scope TRƯỚC IIFE để có thể gọi từ inline
+window.createVehicleRow = function(index) {
+    const row = document.createElement('div');
+    row.className = 'vehicle-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 10px; padding: 15px; background: #F9FAFB; border-radius: 8px; align-items: center; border: 1px solid #E5E7EB;';
+    row.innerHTML = `
+        <div>
+            <label style="font-size: 12px; color: #6B7280; margin-bottom: 5px; display: block;">Mã Xe</label>
+            <input type="text" class="vehicle-id-input" placeholder="VD: VEH001" required style="padding: 8px; border: 1px solid #D1D5DB; border-radius: 4px; width: 100%;">
+        </div>
+        <div>
+            <label style="font-size: 12px; color: #6B7280; margin-bottom: 5px; display: block;">Loại Xe</label>
+            <input type="text" class="vehicle-type-input" placeholder="VD: SUV" required style="padding: 8px; border: 1px solid #D1D5DB; border-radius: 4px; width: 100%;">
+        </div>
+        <div>
+            <label style="font-size: 12px; color: #6B7280; margin-bottom: 5px; display: block;">Biển Số</label>
+            <input type="text" class="vehicle-number-input" placeholder="VD: 30A-12345" required style="padding: 8px; border: 1px solid #D1D5DB; border-radius: 4px; width: 100%;">
+        </div>
+        <div>
+            <label style="font-size: 12px; color: #6B7280; margin-bottom: 5px; display: block;">Tình Trạng</label>
+            <select class="vehicle-status-input" style="padding: 8px; border: 1px solid #D1D5DB; border-radius: 4px; width: 100%;">
+                <option value="available">Sẵn sàng</option>
+                <option value="in-use">Đang sử dụng</option>
+                <option value="maintenance">Bảo trì</option>
+                <option value="inactive">Không hoạt động</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+            <button type="button" class="btn-remove-vehicle-row" style="background: #EF4444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; height: fit-content;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    // Xử lý xóa hàng
+    const removeBtn = row.querySelector('.btn-remove-vehicle-row');
+    removeBtn.addEventListener('click', function() {
+        row.remove();
+    });
+
+    return row;
+};
+
+window.generateVehicleRows = function(count) {
+    console.log('🔹 generateVehicleRows được gọi với count:', count);
+    const container = document.getElementById('vehiclesToAddContainer');
+    if (!container) {
+        console.error('❌ Không tìm thấy container vehiclesToAddContainer');
+        return;
+    }
+
+    console.log('✅ Tìm thấy container vehiclesToAddContainer');
+    container.innerHTML = '';
+
+    const num = parseInt(count) || 0;
+    console.log('Parsed num:', num);
+
+    if (num > 0) {
+        console.log('✅ Tạo ' + num + ' hàng nhập xe');
+        for (let i = 0; i < num; i++) {
+            const row = window.createVehicleRow(i);
+            container.appendChild(row);
+            console.log('✅ Đã thêm hàng xe số ' + (i + 1));
+        }
+        console.log('=== Hoàn thành tạo ' + num + ' hàng xe ===');
+    } else {
+        container.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhập số lượng xe ở trên để hiển thị form nhập thông tin xe.</p>';
+        console.log('⚠️ Không có xe nào để tạo');
+    }
+};
+
+// Không cần hàm handleVehicleCountChange nữa vì mỗi nhóm chỉ có 1 xe
+// Quản lý xe sẽ được thực hiện qua modal xem chi tiết
+
+// Script cho inline editing trong modal xem chi tiết
+document.addEventListener('DOMContentLoaded', function() {
+    // Sử dụng event delegation để xử lý các button trong modal xem chi tiết
+    const viewGroupModal = document.getElementById('viewGroupModal');
+
+    if (viewGroupModal) {
+        // Xử lý click nút Sửa
+        viewGroupModal.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-edit-vehicle-view')) {
+                e.preventDefault();
+                const row = e.target.closest('.vehicle-row-view');
+                if (row) {
+                    enableVehicleEditMode(row);
+                }
+            }
+
+            // Xử lý click nút Lưu
+            if (e.target.closest('.btn-save-vehicle-view')) {
+                e.preventDefault();
+                const row = e.target.closest('.vehicle-row-view');
+                if (row) {
+                    saveVehicleInfo(row);
+                }
+            }
+
+            // Xử lý click nút Hủy
+            if (e.target.closest('.btn-cancel-vehicle-view')) {
+                e.preventDefault();
+                const row = e.target.closest('.vehicle-row-view');
+                if (row) {
+                    cancelVehicleEditMode(row);
+                }
+            }
+        });
+    }
+
+    function enableVehicleEditMode(row) {
+        console.log('🔹 Bật chế độ chỉnh sửa cho xe');
+
+        // Ẩn các span hiển thị
+        const typeDisplay = row.querySelector('.vehicle-type-display');
+        const numberDisplay = row.querySelector('.vehicle-number-display');
+        const statusDisplay = row.querySelector('.vehicle-status-display');
+
+        // Hiện các input/select
+        const typeEdit = row.querySelector('.vehicle-type-edit');
+        const numberEdit = row.querySelector('.vehicle-number-edit');
+        const statusEdit = row.querySelector('.vehicle-status-edit');
+
+        // Ẩn nút Sửa, hiện nút Lưu và Hủy
+        const editBtn = row.querySelector('.btn-edit-vehicle-view');
+        const saveBtn = row.querySelector('.btn-save-vehicle-view');
+        const cancelBtn = row.querySelector('.btn-cancel-vehicle-view');
+
+        if (typeDisplay) typeDisplay.style.display = 'none';
+        if (numberDisplay) numberDisplay.style.display = 'none';
+        if (statusDisplay) statusDisplay.style.display = 'none';
+
+        if (typeEdit) typeEdit.style.display = 'inline-block';
+        if (numberEdit) numberEdit.style.display = 'inline-block';
+        if (statusEdit) statusEdit.style.display = 'inline-block';
+
+        if (editBtn) editBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'inline-block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    function cancelVehicleEditMode(row) {
+        console.log('🔹 Hủy chế độ chỉnh sửa');
+
+        // Hiện các span hiển thị
+        const typeDisplay = row.querySelector('.vehicle-type-display');
+        const numberDisplay = row.querySelector('.vehicle-number-display');
+        const statusDisplay = row.querySelector('.vehicle-status-display');
+
+        // Ẩn các input/select
+        const typeEdit = row.querySelector('.vehicle-type-edit');
+        const numberEdit = row.querySelector('.vehicle-number-edit');
+        const statusEdit = row.querySelector('.vehicle-status-edit');
+
+        // Ẩn nút Lưu và Hủy, hiện nút Sửa
+        const editBtn = row.querySelector('.btn-edit-vehicle-view');
+        const saveBtn = row.querySelector('.btn-save-vehicle-view');
+        const cancelBtn = row.querySelector('.btn-cancel-vehicle-view');
+
+        if (typeDisplay) typeDisplay.style.display = 'inline';
+        if (numberDisplay) numberDisplay.style.display = 'inline';
+        if (statusDisplay) statusDisplay.style.display = 'inline';
+
+        if (typeEdit) typeEdit.style.display = 'none';
+        if (numberEdit) numberEdit.style.display = 'none';
+        if (statusEdit) statusEdit.style.display = 'none';
+
+        if (editBtn) editBtn.style.display = 'inline-block';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+
+        // Khôi phục giá trị ban đầu
+        if (typeEdit && typeDisplay) {
+            typeEdit.value = typeDisplay.textContent.trim();
+        }
+        if (numberEdit && numberDisplay) {
+            numberEdit.value = numberDisplay.textContent.trim();
+        }
+        if (statusEdit && statusDisplay) {
+            statusEdit.value = statusDisplay.textContent.trim();
+        }
+    }
+
+    function saveVehicleInfo(row) {
+        const vehicleId = row.getAttribute('data-vehicle-id');
+        const typeEdit = row.querySelector('.vehicle-type-edit');
+        const numberEdit = row.querySelector('.vehicle-number-edit');
+        const statusEdit = row.querySelector('.vehicle-status-edit');
+
+        if (!vehicleId) {
+            alert('Không tìm thấy ID xe!');
+            return;
+        }
+
+        const vehicleData = {};
+        if (typeEdit && typeEdit.value.trim()) {
+            vehicleData.type = typeEdit.value.trim();
+        }
+        if (numberEdit && numberEdit.value.trim()) {
+            vehicleData.vehicleNumber = numberEdit.value.trim();
+        }
+        if (statusEdit && statusEdit.value) {
+            vehicleData.status = statusEdit.value;
+        }
+
+        console.log('🔹 Lưu thông tin xe:', vehicleId, vehicleData);
+
+        // Gọi API cập nhật xe
+            fetch(`https://api-gateway-cloud-856180445698.asia-southeast1.run.app/api/vehicles/${vehicleId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(vehicleData)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                return response.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+        })
+        .then(data => {
+            console.log('✅ Đã cập nhật xe thành công:', data);
+
+            // Cập nhật giá trị hiển thị
+            const typeDisplay = row.querySelector('.vehicle-type-display');
+            const numberDisplay = row.querySelector('.vehicle-number-display');
+            const statusDisplay = row.querySelector('.vehicle-status-display');
+
+            if (typeDisplay && vehicleData.type) {
+                typeDisplay.textContent = vehicleData.type;
+            }
+            if (numberDisplay && vehicleData.vehicleNumber) {
+                numberDisplay.textContent = vehicleData.vehicleNumber;
+            }
+            if (statusDisplay && vehicleData.status) {
+                const statusText = {
+                    'available': 'Sẵn sàng',
+                    'in-use': 'Đang sử dụng',
+                    'maintenance': 'Bảo trì',
+                    'inactive': 'Không hoạt động'
+                };
+                statusDisplay.textContent = statusText[vehicleData.status] || vehicleData.status;
+            }
+
+            // Tắt chế độ chỉnh sửa
+            cancelVehicleEditMode(row);
+
+            // Hiển thị thông báo thành công
+            showUpdateMessage('Đã cập nhật thông tin xe thành công!', 'success');
+        })
+        .catch(error => {
+            console.error('❌ Lỗi khi cập nhật xe:', error);
+            alert('Lỗi khi cập nhật thông tin xe: ' + error.message);
+        });
+    }
+
+    function showUpdateMessage(message, type) {
+        const messageDiv = document.getElementById('updateStatusMessage');
+        if (messageDiv) {
+            messageDiv.textContent = message;
+            messageDiv.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            messageDiv.style.display = 'block';
+            messageDiv.style.position = 'fixed';
+            messageDiv.style.top = '20px';
+            messageDiv.style.right = '20px';
+            messageDiv.style.zIndex = '10000';
+            messageDiv.style.padding = '12px 20px';
+            messageDiv.style.borderRadius = '4px';
+
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+});
+
+// Không cần hàm handleAddVehicleCountChange nữa vì mỗi nhóm chỉ có 1 xe
+// Form xe sẽ được tự động hiển thị khi mở modal thêm nhóm
+
+// Script cho modal thêm nhóm xe
+document.addEventListener('DOMContentLoaded', function() {
+    const addGroupModal = document.getElementById('addGroupModal');
+    const addGroupForm = document.getElementById('addGroupForm');
+    const btnAddGroup = document.getElementById('btnAddGroup');
+    const cancelAddGroupBtn = document.getElementById('cancelAddGroupBtn');
+    const addGroupModalClose = addGroupModal?.querySelector('.close-modal');
+    const addGroupStatusMessage = document.getElementById('addGroupStatusMessage');
+
+    // Mở modal khi click nút Thêm Nhóm Xe
+    if (btnAddGroup) {
+        btnAddGroup.addEventListener('click', function() {
+            if (addGroupModal) {
+                addGroupModal.classList.add('show');
+                addGroupModal.style.display = 'block';
+                // Reset form
+                if (addGroupForm) {
+                    addGroupForm.reset();
+                }
+                // Tự động hiển thị 1 form nhập xe (mỗi nhóm chỉ có 1 xe)
+                const addVehiclesContainer = document.getElementById('addVehiclesToAddContainer');
+                if (addVehiclesContainer && window.createVehicleRow) {
+                    addVehiclesContainer.innerHTML = '';
+                    const row = window.createVehicleRow(0);
+                    addVehiclesContainer.appendChild(row);
+                }
+                // Ẩn thông báo
+                if (addGroupStatusMessage) {
+                    addGroupStatusMessage.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Đóng modal
+    function closeAddGroupModal() {
+        if (addGroupModal) {
+            addGroupModal.classList.remove('show');
+            addGroupModal.style.display = 'none';
+            // Reset form
+            if (addGroupForm) {
+                addGroupForm.reset();
+            }
+            // Ẩn thông báo
+            if (addGroupStatusMessage) {
+                addGroupStatusMessage.style.display = 'none';
+            }
+        }
+    }
+
+    if (addGroupModalClose) {
+        addGroupModalClose.addEventListener('click', function() {
+            closeAddGroupModal();
+        });
+    }
+
+    if (cancelAddGroupBtn) {
+        cancelAddGroupBtn.addEventListener('click', function() {
+            closeAddGroupModal();
+        });
+    }
+
+    // Đóng modal khi click bên ngoài
+    if (addGroupModal) {
+        window.addEventListener('click', function (event) {
+            if (event.target === addGroupModal) {
+                closeAddGroupModal();
+            }
+        });
+    }
+
+    // Xử lý submit form
+    if (addGroupForm) {
+        addGroupForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('addGroupName').value.trim();
+            const active = document.getElementById('addActive').value;
+            const description = document.getElementById('addDescription').value.trim();
+            const groupId = document.getElementById('addGroupId').value.trim();
+
+            if (!groupId) {
+                showAddGroupMessage('Vui lòng nhập mã nhóm xe!', 'error');
+                return;
+            }
+
+            if (!name) {
+                showAddGroupMessage('Vui lòng nhập tên nhóm xe!', 'error');
+                return;
+            }
+
+            // Lấy thông tin xe từ form (mỗi nhóm chỉ có 1 xe)
+            const vehicleRows = document.querySelectorAll('#addVehiclesToAddContainer .vehicle-row');
+            const vehicles = [];
+            vehicleRows.forEach(function(row) {
+                const vehicleId = row.querySelector('.vehicle-id-input')?.value.trim();
+                const vehicleType = row.querySelector('.vehicle-type-input')?.value.trim();
+                const vehicleNumber = row.querySelector('.vehicle-number-input')?.value.trim();
+                const status = row.querySelector('.vehicle-status-input')?.value;
+
+                if (vehicleId && vehicleType && vehicleNumber) {
+                    vehicles.push({
+                        vehicleId: vehicleId,
+                        type: vehicleType,
+                        vehicleNumber: vehicleNumber,
+                        status: status || 'available'
+                    });
+                }
+            });
+
+            // Kiểm tra nếu chưa nhập thông tin xe
+            if (vehicles.length === 0) {
+                showAddGroupMessage('Vui lòng nhập thông tin cho xe! Mỗi nhóm cần có đúng 1 xe.', 'error');
+                return;
+            }
+
+            // Kiểm tra số lượng xe (chỉ cho phép 1 xe)
+            if (vehicles.length > 1) {
+                showAddGroupMessage('Mỗi nhóm chỉ được có đúng 1 xe! Vui lòng xóa các xe thừa (chỉ giữ lại 1 xe).', 'error');
+                return;
+            }
+
+            // Tạo FormData
+            const formData = new FormData();
+            formData.append('groupId', groupId);
+            formData.append('name', name);
+            formData.append('active', active);
+            formData.append('description', description);
+
+            // Thêm danh sách xe (chỉ 1 xe)
+            if (vehicles.length > 0) {
+                formData.append('vehicles', JSON.stringify(vehicles));
+            }
+
+            // Gửi request
+            fetch('/admin/staff-management/add', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.ok || response.status === 302 || response.redirected) {
+                    showAddGroupMessage('Nhóm xe đã được thêm thành công!', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    return response.text().then(text => {
+                        throw new Error(text);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('❌ Lỗi khi thêm nhóm xe:', error);
+                showAddGroupMessage('Lỗi khi thêm nhóm xe: ' + error.message, 'error');
+            });
+        });
+    }
+
+    function showAddGroupMessage(message, type) {
+        if (addGroupStatusMessage) {
+            addGroupStatusMessage.textContent = message;
+            addGroupStatusMessage.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            addGroupStatusMessage.style.display = 'block';
+
+            setTimeout(() => {
+                addGroupStatusMessage.style.display = 'none';
+            }, 5000);
+        }
+    }
+});
+</script>
+
+<script src="/js/staff-script.js"></script>
+</body>
+</html>
+
+

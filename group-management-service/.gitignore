@@ -1,0 +1,43 @@
+# OS / System files
+.DS_Store
+Thumbs.db
+
+# Local database / temp DB files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# IDE cache / analysis files
+.vs/
+.idea/
+.settings/
+.classpath
+.project
+*.iml
+CodeChunks*
+SemanticSymbols*
+
+# Logs
+*.log
+
+# Temporary / backup files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Test / coverage output
+coverage/
+*.lcov
+
+# Generated reports (optional)
+*.html
+*.postman_collection.json
+
+# Maven build
+target/
+*.class
+bin/

@@ -1,0 +1,108 @@
+================================================================================
+       SIÊU HƯỚNG DẪN: TRIỂN KHAI HỆ THỐNG MICROSERVICES TỪ A ĐẾN Z
+================================================================================
+Dành cho: EV Co-ownership Cost Sharing System
+Cập nhật: 16/05/2026
+--------------------------------------------------------------------------------
+
+PHẦN 0: CHUẨN BỊ CÔNG CỤ (Làm 1 lần duy nhất)
+--------------------------------------------------------------------------------
+1. Cài đặt Docker Desktop: Tải tại docker.com (Phải bật Docker lên trước khi gõ lệnh).
+2. Cài đặt Google Cloud SDK: Tải tại cloud.google.com/sdk.
+3. Cửa sổ dòng lệnh: 
+   - Trên Windows: Bạn nên mở **PowerShell** (nền xanh) hoặc **Google Cloud SDK Shell**. 
+   - KHÔNG nên dùng CMD cũ vì nó không hỗ trợ tốt các lệnh dài.
+
+BƯỚC 1: ĐĂNG NHẬP (Thực hiện trên PowerShell)
+--------------------------------------------------------------------------------
+1. Đăng nhập Google Cloud:
+   Gõ lệnh: gcloud auth login
+   -> Trình duyệt sẽ tự mở ra, bạn chọn tài khoản Google của mình và bấm "Allow".
+   -> Quay lại PowerShell, bạn sẽ thấy thông báo thành công.
+
+2. Cấu hình Project ID:
+   Gõ lệnh: gcloud config set project ev-cost-sharing-496416
+
+3. Đăng nhập Docker Hub (Để đẩy code lên kho):
+   Gõ lệnh: docker login
+   -> Nó sẽ hỏi Username và Password của Docker Hub. Bạn nhập vào (lưu ý: khi nhập mật khẩu nó sẽ không hiện ký tự ra màn hình, cứ gõ đúng rồi Enter).
+
+
+BƯỚC 2: CHI TIẾT ĐẨY DATABASE LÊN ĐÁM MÂY (Cloud SQL)
+--------------------------------------------------------------------------------
+Quy trình: Máy tính của bạn -> Cloud Storage (Thùng chứa) -> Cloud SQL.
+
+1. Tại máy tính, xuất file SQL:
+   Mở PowerShell, gõ: mysqldump -u root -p ev_sharing_db > ev_backup.sql
+   -> Nó sẽ hỏi mật khẩu MySQL local của bạn. Xong nó tạo ra file ev_backup.sql.
+
+2. Tạo "Thùng chứa" trên Cloud (Nếu chưa có):
+   Gõ: gsutil mb -l asia-southeast1 gs://ev-cost-sharing-storage/
+
+3. Tải file lên Thùng chứa:
+   Gõ: gsutil cp ev_backup.sql gs://ev-cost-sharing-storage/
+
+4. Ra lệnh cho Database "ăn" file đó:
+   Gõ: gcloud sql import sql ev-database gs://ev-cost-sharing-storage/ev_backup.sql --database=ev_sharing_db --quiet
+
+
+BƯỚC 3: CHI TIẾT ĐÓNG GÓI VÀ ĐẨY LÊN DOCKER HUB
+--------------------------------------------------------------------------------
+Làm lần lượt cho từng thư mục (ví dụ thư mục `ui-service`):
+
+1. Di chuyển vào thư mục code:
+   Gõ: cd d:\NguyenNgocAnh\KCPM\EV-Co-ownership-Cost-sharing-System-anh\ui-service
+
+2. Đóng gói (Build):
+   Gõ: docker build -t nguyenngocanh15/ui-service:latest .
+   -> Docker sẽ đọc file 'Dockerfile' và nén code của bạn thành 1 cái hộp (Image).
+
+3. Đẩy lên mạng (Push):
+   Gõ: docker push nguyenngocanh15/ui-service:latest
+   -> Bây giờ code của bạn đã nằm an toàn trên Docker Hub.
+
+
+BƯỚC 4: CHI TIẾT LẤY TỪ DOCKER HUB ĐẨY LÊN GOOGLE CLOUD RUN
+--------------------------------------------------------------------------------
+Đây là lúc bạn ra lệnh cho Google Cloud "Hãy lấy cái hộp trên Docker Hub về và chạy nó".
+
+Gõ lệnh:
+gcloud run deploy ui-service `
+  --image=docker.io/nguyenngocanh15/ui-service:latest `
+  --region=asia-southeast1 `
+  --allow-unauthenticated `
+  --port=8080 `
+  --min-instances=0 `
+  --max-instances=1
+
+-> Chờ khoảng 1-2 phút, nó sẽ hiện ra 1 cái link URL. Đó chính là link web của bạn.
+
+
+BƯỚC 5: LỆNH QUẢN LÝ SIÊU TIẾT KIỆM (NGỦ ĐÔNG)
+--------------------------------------------------------------------------------
+Đây là bước quan trọng nhất để bạn không bị trừ tiền khi không dùng.
+
+1. Tắt Database (Lệnh này sẽ làm database ngừng hoạt động):
+   gcloud sql instances patch ev-database --activation-policy=NEVER
+
+2. Kiểm tra xem đã tắt chưa:
+   gcloud sql instances describe ev-database --format="value(state)"
+   -> Nếu nó hiện "STOPPED" là bạn đã yên tâm ngủ ngon.
+
+3. Khi muốn bật lại để test:
+   gcloud sql instances patch ev-database --activation-policy=ALWAYS
+   -> Chờ 3 phút cho nó khởi động rồi mới mở link web.
+
+
+PHỤ LỤC: DANH SÁCH PORT 10 SERVICES
+--------------------------------------------------------------------------------
+Bạn dùng lệnh ở BƯỚC 4, chỉ cần thay TÊN và PORT tương ứng:
+1. ui-service (8080)             2. api-gateway-cloud (8084)
+3. user-account-service (8083)   4. cost-payment-service (8081)
+5. vehicle-service (8082)        6. reservation-service (8085)
+7. group-management-service (8086) 8. reservation-admin-service (8087)
+9. legal-contract-service (8088)  10. dispute-management-service (8089)
+
+--------------------------------------------------------------------------------
+Chúc bạn thành công rực rỡ với dự án của mình!
+================================================================================

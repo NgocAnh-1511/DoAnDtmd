@@ -1,0 +1,144 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: api-gateway
+  codec:
+    max-in-memory-size: 50MB
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 45MB
+  cloud:
+    gateway:
+      routes:
+        # Cost Payment Service Routes (including /api/funds/**)
+        - id: cost-payment-service
+          uri: https://cost-payment-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/costs/**, /api/payments/**, /api/shares/**, /api/cost-shares/**, /api/auto-split/**, /api/usage-tracking/**, /api/funds/**, /api/my-vehicles, /api/auth/logout, /api/reports/**
+        
+        # Group Management Service Routes
+        - id: group-management-service
+          uri: https://group-management-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/groups/**, /api/votes/**, /api/admin/auth/login
+        
+        # Reservation Service - Users Vehicles Route (phải đặt trước để match /api/users/*/vehicles)
+        - id: reservation-service-users-vehicles
+          uri: https://reservation-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/users/*/vehicles
+          order: 1
+        
+        # Reservation Service - Vehicles Reservations Route (phải đặt trước vehicle-service)
+        - id: reservation-service-vehicles-reservations
+          uri: https://reservation-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/vehicles/*/reservations/**
+          order: 1
+        
+        # Reservation Service - Vehicles Group Route (phải đặt trước vehicle-service)
+        - id: reservation-service-vehicles-group
+          uri: https://reservation-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/vehicles/*/group
+          order: 1
+        
+        # Reservation Service Routes
+        - id: reservation-service
+          uri: https://reservation-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/reservations/**, /api/fairness/**
+          order: 2
+        
+        # User Account Service Routes
+        - id: user-account-service
+          uri: https://user-account-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/auth/**, /api/users/**, /api/my-vehicles
+          order: 3
+        
+        # User uploads (images, documents) - must be before user-account-service
+        - id: user-account-uploads
+          uri: https://user-account-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/uploads/**
+          order: 1
+        
+        # Vehicle Service Routes
+        - id: vehicle-service
+          uri: https://vehicle-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/vehicles/**, /api/vehicle-services/**, /api/vehicle-groups/**, /api/services/**
+        
+        # Reservation Admin Service Routes
+        - id: reservation-admin-service
+          uri: https://reservation-admin-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/admin/reservations/**
+        
+        # Legal Contract Service Routes
+        - id: legal-contract-service
+          uri: https://legal-contract-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/contracts/**, /api/legalcontracts/**
+        
+        # Dispute Management Service Routes
+        - id: dispute-management-service
+          uri: https://dispute-management-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/disputes/**
+        
+        # UI Service Routes (for /api/fund/** and /api/vehicle-maintenance/** endpoints)
+        - id: ui-service-fund
+          uri: https://ui-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/fund/**
+        
+        # UI Service Routes (for /api/vehicle-maintenance/** endpoints)
+        - id: ui-service-vehicle-maintenance
+          uri: https://ui-service-856180445698.asia-southeast1.run.app
+          predicates:
+            - Path=/api/vehicle-maintenance/**
+      
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:8080"
+              - "*"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: false
+            maxAge: 3600
+      
+      # Default Filters - Remove duplicate CORS headers from downstream services
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin Access-Control-Allow-Headers Access-Control-Allow-Methods
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: INFO
+
