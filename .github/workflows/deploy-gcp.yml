@@ -1,0 +1,296 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build and Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api-gateway:
+              - 'api-gateway/**'
+            cost-payment-service:
+              - 'cost-payment-service/**'
+            dispute-management-service:
+              - 'dispute-management-service/**'
+            group-management-service:
+              - 'group-management-service/**'
+            legal-contract-service:
+              - 'LegalContractService/**'
+            reservation-admin-service:
+              - 'ReservationAdminService/**'
+            reservation-service:
+              - 'ReservationService/**'
+            ui-service:
+              - 'ui-service/**'
+            user-account-service:
+              - 'user-account-service/**'
+            vehicle-service:
+              - 'VehicleServiceManagementService/**'
+
+      - name: Authenticate to Google Cloud
+        if: |
+          steps.filter.outputs.api-gateway == 'true' ||
+          steps.filter.outputs.cost-payment-service == 'true' ||
+          steps.filter.outputs.dispute-management-service == 'true' ||
+          steps.filter.outputs.group-management-service == 'true' ||
+          steps.filter.outputs.legal-contract-service == 'true' ||
+          steps.filter.outputs.reservation-admin-service == 'true' ||
+          steps.filter.outputs.reservation-service == 'true' ||
+          steps.filter.outputs.ui-service == 'true' ||
+          steps.filter.outputs.user-account-service == 'true' ||
+          steps.filter.outputs.vehicle-service == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: |
+          steps.filter.outputs.api-gateway == 'true' ||
+          steps.filter.outputs.cost-payment-service == 'true' ||
+          steps.filter.outputs.dispute-management-service == 'true' ||
+          steps.filter.outputs.group-management-service == 'true' ||
+          steps.filter.outputs.legal-contract-service == 'true' ||
+          steps.filter.outputs.reservation-admin-service == 'true' ||
+          steps.filter.outputs.reservation-service == 'true' ||
+          steps.filter.outputs.ui-service == 'true' ||
+          steps.filter.outputs.user-account-service == 'true' ||
+          steps.filter.outputs.vehicle-service == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        if: |
+          steps.filter.outputs.api-gateway == 'true' ||
+          steps.filter.outputs.cost-payment-service == 'true' ||
+          steps.filter.outputs.dispute-management-service == 'true' ||
+          steps.filter.outputs.group-management-service == 'true' ||
+          steps.filter.outputs.legal-contract-service == 'true' ||
+          steps.filter.outputs.reservation-admin-service == 'true' ||
+          steps.filter.outputs.reservation-service == 'true' ||
+          steps.filter.outputs.ui-service == 'true' ||
+          steps.filter.outputs.user-account-service == 'true' ||
+          steps.filter.outputs.vehicle-service == 'true'
+        run: |
+          gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+
+      # -------------------------------------------------------------
+      # 1. API GATEWAY
+      # -------------------------------------------------------------
+      - name: Build & Push api-gateway-cloud
+        if: steps.filter.outputs.api-gateway == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/api-gateway-cloud:latest ./api-gateway
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/api-gateway-cloud:latest
+
+      - name: Deploy api-gateway-cloud to Cloud Run
+        if: steps.filter.outputs.api-gateway == 'true'
+        run: |
+          gcloud run deploy api-gateway-cloud \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/api-gateway-cloud:latest \
+            --region=asia-southeast1 \
+            --port=8084 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-env-vars="SPRING_PROFILES_ACTIVE=docker,SERVER_PORT=8084,SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS=*,SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_METHODS=*,SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_HEADERS=*,SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOW_CREDENTIALS=false" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 2. COST PAYMENT SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push cost-payment-service
+        if: steps.filter.outputs.cost-payment-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/cost-payment-service:latest ./cost-payment-service
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/cost-payment-service:latest
+
+      - name: Deploy cost-payment-service to Cloud Run
+        if: steps.filter.outputs.cost-payment-service == 'true'
+        run: |
+          gcloud run deploy cost-payment-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/cost-payment-service:latest \
+            --region=asia-southeast1 \
+            --port=8081 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/Cost_Payment_DB?useSSL=false&allowPublicKeyRetrieval=true,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 3. DISPUTE MANAGEMENT SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push dispute-management-service
+        if: steps.filter.outputs.dispute-management-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/dispute-management-service:latest ./dispute-management-service
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/dispute-management-service:latest
+
+      - name: Deploy dispute-management-service to Cloud Run
+        if: steps.filter.outputs.dispute-management-service == 'true'
+        run: |
+          gcloud run deploy dispute-management-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/dispute-management-service:latest \
+            --region=asia-southeast1 \
+            --port=8090 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/Dispute_Management_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 4. GROUP MANAGEMENT SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push group-management-service
+        if: steps.filter.outputs.group-management-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/group-management-service:latest ./group-management-service
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/group-management-service:latest
+
+      - name: Deploy group-management-service to Cloud Run
+        if: steps.filter.outputs.group-management-service == 'true'
+        run: |
+          gcloud run deploy group-management-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/group-management-service:latest \
+            --region=asia-southeast1 \
+            --port=8082 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/Group_Management_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 5. LEGAL CONTRACT SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push legal-contract-service
+        if: steps.filter.outputs.legal-contract-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/legal-contract-service:latest ./LegalContractService
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/legal-contract-service:latest
+
+      - name: Deploy legal-contract-service to Cloud Run
+        if: steps.filter.outputs.legal-contract-service == 'true'
+        run: |
+          gcloud run deploy legal-contract-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/legal-contract-service:latest \
+            --region=asia-southeast1 \
+            --port=8089 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/legal_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 6. RESERVATION ADMIN SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push reservation-admin-service
+        if: steps.filter.outputs.reservation-admin-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-admin-service:latest ./ReservationAdminService
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-admin-service:latest
+
+      - name: Deploy reservation-admin-service to Cloud Run
+        if: steps.filter.outputs.reservation-admin-service == 'true'
+        run: |
+          gcloud run deploy reservation-admin-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-admin-service:latest \
+            --region=asia-southeast1 \
+            --port=8087 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/co_ownership_booking_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC,SPRING_DATASOURCE_USERNAME=avnadmin,SPRING_DATASOURCE_ADMIN_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/co_ownership_booking_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC,SPRING_DATASOURCE_ADMIN_USERNAME=avnadmin,SPRING_DATASOURCE_BOOKING_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/co_ownership_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC,SPRING_DATASOURCE_BOOKING_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 7. RESERVATION SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push reservation-service
+        if: steps.filter.outputs.reservation-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-service:latest ./ReservationService
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-service:latest
+
+      - name: Deploy reservation-service to Cloud Run
+        if: steps.filter.outputs.reservation-service == 'true'
+        run: |
+          gcloud run deploy reservation-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/reservation-service:latest \
+            --region=asia-southeast1 \
+            --port=8086 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/co_ownership_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 8. UI SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push ui-service
+        if: steps.filter.outputs.ui-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/ui-service:latest ./ui-service
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/ui-service:latest
+
+      - name: Deploy ui-service to Cloud Run
+        if: steps.filter.outputs.ui-service == 'true'
+        run: |
+          gcloud run deploy ui-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/ui-service:latest \
+            --region=asia-southeast1 \
+            --port=8080 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-env-vars="API_GATEWAY_URL=https://api-gateway-cloud-856180445698.asia-southeast1.run.app" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 9. USER ACCOUNT SERVICE
+      # -------------------------------------------------------------
+      - name: Build & Push user-account-service
+        if: steps.filter.outputs.user-account-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/user-account-service:latest ./user-account-service
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/user-account-service:latest
+
+      - name: Deploy user-account-service to Cloud Run
+        if: steps.filter.outputs.user-account-service == 'true'
+        run: |
+          gcloud run deploy user-account-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/user-account-service:latest \
+            --region=asia-southeast1 \
+            --port=8083 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/CoOwnershipDB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
+
+      # -------------------------------------------------------------
+      # 10. VEHICLE SERVICE (VehicleServiceManagementService)
+      # -------------------------------------------------------------
+      - name: Build & Push vehicle-service
+        if: steps.filter.outputs.vehicle-service == 'true'
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/vehicle-service:latest ./VehicleServiceManagementService
+          docker push asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/vehicle-service:latest
+
+      - name: Deploy vehicle-service to Cloud Run
+        if: steps.filter.outputs.vehicle-service == 'true'
+        run: |
+          gcloud run deploy vehicle-service \
+            --image=asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ev-sharing-repo/vehicle-service:latest \
+            --region=asia-southeast1 \
+            --port=8085 \
+            --vpc-connector=projects/${{ secrets.GCP_PROJECT_ID }}/locations/asia-southeast1/connectors/ev-vpc-connector \
+            --set-secrets=SPRING_DATASOURCE_PASSWORD=ev-db-password:latest \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.GCP_DB_PRIVATE_IP }}:3306/vehicle_management?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useJDBCCompliantTimezoneShift=true,SPRING_DATASOURCE_USERNAME=avnadmin" \
+            --allow-unauthenticated
