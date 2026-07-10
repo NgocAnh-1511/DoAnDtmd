@@ -29,7 +29,7 @@ Chứng minh khi có thay đổi mã nguồn, hệ thống tự động nhận d
 
 ---
 
-## 🔒 DEMO PHẦN 2: TÍNH BẢO MẬT HẠ TẦNG (CLUOD SECURITY)
+## 🔒 DEMO PHẦN 2: TÍNH BẢO MẬT HẠ TẦNG (CLOUD SECURITY)
 
 ### Mục tiêu:
 Chứng minh dữ liệu được bảo vệ an toàn trong mạng nội bộ VPC, mật khẩu được mã hóa và quy trình CI/CD hoàn toàn bảo mật không dùng khóa cứng.
@@ -75,3 +75,19 @@ Tôi đã tạo sẵn file cấu hình tải [load_test.js](file:///D:/NguyenNgo
 4. **Thuyết trình trực quan:**
    * Khi k6 đang chạy và gửi hàng nghìn request, hãy chỉ cho thầy thấy biểu đồ **Active Instances** trên GCP Console bắt đầu **đi lên** (tăng từ 1 -> 2 -> 3 -> 4 instances) để xử lý lượng tải lớn. Điều này chứng minh **Auto-scaling (Scale Up)** hoạt động thành công.
    * Sau khi k6 chạy xong, lượng tải về 0. Đợi khoảng 2-3 phút, chỉ cho thầy thấy biểu đồ **Active Instances** tự động **giảm dần về 0**. Điều này chứng minh tính năng **Scale to Zero** của Serverless hoạt động hoàn hảo giúp tiết kiệm chi phí!
+
+---
+
+## 🔄 PHẦN 4: SO SÁNH NÂNG CẤP SO VỚI GIỮA KỲ (ĐỂ ĐƯA VÀO BÁO CÁO)
+
+Dưới đây là bảng đối chiếu chi tiết sự khác biệt để bạn đưa trực tiếp vào slide/báo cáo đồ án cuối kỳ nhằm làm nổi bật phần nâng cấp điểm cộng:
+
+| Tiêu chí | Phiên bản Giữa kỳ | Phiên bản Cuối kỳ (Hiện tại) | Lợi ích & Giá trị kỹ thuật |
+| :--- | :--- | :--- | :--- |
+| **Bảo mật Cơ sở dữ liệu (Database Security)** | **Public IP (`34.124.172.255`)**<br>Database mở cổng 3306 ra internet công cộng, dễ bị dò quét và tấn công. | **Private IP (`10.252.0.3`)**<br>Ngắt hoàn toàn internet. Database chạy cô lập trong mạng ảo **VPC Network (`ev-sharing-vpc`)**. | Chặn đứng hoàn toàn nguy cơ tấn công mạng từ bên ngoài vào cơ sở dữ liệu. |
+| **Kết nối Serverless tới Database** | Kết nối trực tiếp qua IP Public của cơ sở dữ liệu. | Kết nối nội bộ thông qua thiết bị cầu nối mạng **Serverless VPC Access Connector** (`ev-vpc-connector`). | Đảm bảo các service trên Cloud Run giao tiếp với Database cực kỳ an toàn, nội bộ và ổn định. |
+| **Quản lý thông tin nhạy cảm (Secrets)** | Mật khẩu database được **lưu dạng chữ rõ (plain-text)** trong các biến môi trường trên Cloud Run Console. | Mật khẩu được mã hóa và lưu tập trung tại **Google Secret Manager (`ev-db-password`)**. | Loại bỏ hoàn toàn nguy cơ lộ mật khẩu trên trang quản trị hoặc trong mã nguồn dự án. |
+| **Cách thức Triển khai (Deployment)** | **Thủ công ở máy local:**<br>Phải tự gõ lệnh build Docker, push lên Docker Hub, và chạy lệnh deploy từng service bằng tay. | **Tự động hóa hoàn toàn (CI/CD):**<br>Chỉ cần push code lên GitHub, hệ thống **GitHub Actions** tự động biên dịch, đóng gói và deploy lên GCP. | Rút ngắn thời gian triển khai, loại bỏ sai sót do thao tác thủ công của con người. |
+| **Xác thực hệ thống CI/CD** | Xác thực bằng tài khoản gcloud cá nhân ở máy local. | Xác thực không dùng khóa (**Workload Identity Federation - WIF**). Không lưu trữ file khóa JSON nhạy cảm. | Đạt tiêu chuẩn bảo mật đám mây cao nhất (Keyless Authentication). Các thành viên trong nhóm push code đều tự deploy được mà không cần share mật khẩu. |
+| **Nơi lưu trữ ảnh Container** | Lưu trữ công khai hoặc phụ thuộc vào bên thứ 3 là **Docker Hub** (`docker.io`). | Chuyển hoàn toàn sang dịch vụ đám mây gốc **Google Artifact Registry (`ev-sharing-repo`)**. | Đảm bảo các file đóng gói ứng dụng (Docker images) được lưu trữ riêng tư, kéo tải siêu nhanh vì cùng hạ tầng mạng của Google. |
+| **Hiệu năng Pipeline (Monorepo)** | Không có (Nếu làm tự động thông thường sẽ phải build lại cả 10 services rất tốn thời gian). | Tích hợp bộ lọc đường dẫn thông minh (`paths-filter`). **Chỉ tự động build và deploy lại service nào có thay đổi code**. | Tiết kiệm tối đa thời gian build (từ 20 phút xuống còn 2-3 phút) và tiết kiệm tài nguyên tài khoản GitHub Actions. |
