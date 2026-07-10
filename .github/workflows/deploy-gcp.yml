@@ -48,16 +48,16 @@ jobs:
 
       - name: Authenticate to Google Cloud via WIF
         if: |
-          steps.filter.outputs.api-gateway == 'true' ||
-          steps.filter.outputs.cost-payment-service == 'true' ||
-          steps.filter.outputs.dispute-management-service == 'true' ||
-          steps.filter.outputs.group-management-service == 'true' ||
-          steps.filter.outputs.legal-contract-service == 'true' ||
-          steps.filter.outputs.reservation-admin-service == 'true' ||
-          steps.filter.outputs.reservation-service == 'true' ||
-          steps.filter.outputs.ui-service == 'true' ||
-          steps.filter.outputs.user-account-service == 'true' ||
-          steps.filter.outputs.vehicle-service == 'true'
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.api-gateway == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.cost-payment-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.dispute-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.group-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.legal-contract-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-admin-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.ui-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.user-account-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.vehicle-service == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/856180445698/locations/global/workloadIdentityPools/ev-github-pool/providers/ev-github-provider'
@@ -65,30 +65,30 @@ jobs:
 
       - name: Set up Cloud SDK
         if: |
-          steps.filter.outputs.api-gateway == 'true' ||
-          steps.filter.outputs.cost-payment-service == 'true' ||
-          steps.filter.outputs.dispute-management-service == 'true' ||
-          steps.filter.outputs.group-management-service == 'true' ||
-          steps.filter.outputs.legal-contract-service == 'true' ||
-          steps.filter.outputs.reservation-admin-service == 'true' ||
-          steps.filter.outputs.reservation-service == 'true' ||
-          steps.filter.outputs.ui-service == 'true' ||
-          steps.filter.outputs.user-account-service == 'true' ||
-          steps.filter.outputs.vehicle-service == 'true'
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.api-gateway == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.cost-payment-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.dispute-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.group-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.legal-contract-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-admin-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.ui-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.user-account-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.vehicle-service == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for GCP
         if: |
-          steps.filter.outputs.api-gateway == 'true' ||
-          steps.filter.outputs.cost-payment-service == 'true' ||
-          steps.filter.outputs.dispute-management-service == 'true' ||
-          steps.filter.outputs.group-management-service == 'true' ||
-          steps.filter.outputs.legal-contract-service == 'true' ||
-          steps.filter.outputs.reservation-admin-service == 'true' ||
-          steps.filter.outputs.reservation-service == 'true' ||
-          steps.filter.outputs.ui-service == 'true' ||
-          steps.filter.outputs.user-account-service == 'true' ||
-          steps.filter.outputs.vehicle-service == 'true'
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.api-gateway == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.cost-payment-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.dispute-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.group-management-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.legal-contract-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-admin-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.ui-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.user-account-service == 'true' ||
+          github.event_name == 'workflow_dispatch' || steps.filter.outputs.vehicle-service == 'true'
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
@@ -96,13 +96,13 @@ jobs:
       # 1. API GATEWAY
       # -------------------------------------------------------------
       - name: Build & Push api-gateway-cloud
-        if: steps.filter.outputs.api-gateway == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.api-gateway == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/api-gateway-cloud:latest ./api-gateway
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/api-gateway-cloud:latest
 
       - name: Deploy api-gateway-cloud to Cloud Run
-        if: steps.filter.outputs.api-gateway == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.api-gateway == 'true'
         run: |
           gcloud run deploy api-gateway-cloud \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/api-gateway-cloud:latest \
@@ -116,13 +116,13 @@ jobs:
       # 2. COST PAYMENT SERVICE
       # -------------------------------------------------------------
       - name: Build & Push cost-payment-service
-        if: steps.filter.outputs.cost-payment-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.cost-payment-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/cost-payment-service:latest ./cost-payment-service
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/cost-payment-service:latest
 
       - name: Deploy cost-payment-service to Cloud Run
-        if: steps.filter.outputs.cost-payment-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.cost-payment-service == 'true'
         run: |
           gcloud run deploy cost-payment-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/cost-payment-service:latest \
@@ -137,13 +137,13 @@ jobs:
       # 3. DISPUTE MANAGEMENT SERVICE
       # -------------------------------------------------------------
       - name: Build & Push dispute-management-service
-        if: steps.filter.outputs.dispute-management-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.dispute-management-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/dispute-management-service:latest ./dispute-management-service
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/dispute-management-service:latest
 
       - name: Deploy dispute-management-service to Cloud Run
-        if: steps.filter.outputs.dispute-management-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.dispute-management-service == 'true'
         run: |
           gcloud run deploy dispute-management-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/dispute-management-service:latest \
@@ -158,13 +158,13 @@ jobs:
       # 4. GROUP MANAGEMENT SERVICE
       # -------------------------------------------------------------
       - name: Build & Push group-management-service
-        if: steps.filter.outputs.group-management-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.group-management-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/group-management-service:latest ./group-management-service
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/group-management-service:latest
 
       - name: Deploy group-management-service to Cloud Run
-        if: steps.filter.outputs.group-management-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.group-management-service == 'true'
         run: |
           gcloud run deploy group-management-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/group-management-service:latest \
@@ -179,13 +179,13 @@ jobs:
       # 5. LEGAL CONTRACT SERVICE
       # -------------------------------------------------------------
       - name: Build & Push legal-contract-service
-        if: steps.filter.outputs.legal-contract-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.legal-contract-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/legal-contract-service:latest ./LegalContractService
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/legal-contract-service:latest
 
       - name: Deploy legal-contract-service to Cloud Run
-        if: steps.filter.outputs.legal-contract-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.legal-contract-service == 'true'
         run: |
           gcloud run deploy legal-contract-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/legal-contract-service:latest \
@@ -200,13 +200,13 @@ jobs:
       # 6. RESERVATION ADMIN SERVICE
       # -------------------------------------------------------------
       - name: Build & Push reservation-admin-service
-        if: steps.filter.outputs.reservation-admin-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-admin-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-admin-service:latest ./ReservationAdminService
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-admin-service:latest
 
       - name: Deploy reservation-admin-service to Cloud Run
-        if: steps.filter.outputs.reservation-admin-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-admin-service == 'true'
         run: |
           gcloud run deploy reservation-admin-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-admin-service:latest \
@@ -221,13 +221,13 @@ jobs:
       # 7. RESERVATION SERVICE
       # -------------------------------------------------------------
       - name: Build & Push reservation-service
-        if: steps.filter.outputs.reservation-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-service:latest ./ReservationService
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-service:latest
 
       - name: Deploy reservation-service to Cloud Run
-        if: steps.filter.outputs.reservation-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.reservation-service == 'true'
         run: |
           gcloud run deploy reservation-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/reservation-service:latest \
@@ -242,13 +242,13 @@ jobs:
       # 8. UI SERVICE
       # -------------------------------------------------------------
       - name: Build & Push ui-service
-        if: steps.filter.outputs.ui-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.ui-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/ui-service:latest ./ui-service
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/ui-service:latest
 
       - name: Deploy ui-service to Cloud Run
-        if: steps.filter.outputs.ui-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.ui-service == 'true'
         run: |
           gcloud run deploy ui-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/ui-service:latest \
@@ -262,13 +262,13 @@ jobs:
       # 9. USER ACCOUNT SERVICE
       # -------------------------------------------------------------
       - name: Build & Push user-account-service
-        if: steps.filter.outputs.user-account-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.user-account-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/user-account-service:latest ./user-account-service
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/user-account-service:latest
 
       - name: Deploy user-account-service to Cloud Run
-        if: steps.filter.outputs.user-account-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.user-account-service == 'true'
         run: |
           gcloud run deploy user-account-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/user-account-service:latest \
@@ -283,13 +283,13 @@ jobs:
       # 10. VEHICLE SERVICE (VehicleServiceManagementService)
       # -------------------------------------------------------------
       - name: Build & Push vehicle-service
-        if: steps.filter.outputs.vehicle-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.vehicle-service == 'true'
         run: |
           docker build -t asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/vehicle-service:latest ./VehicleServiceManagementService
           docker push asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/vehicle-service:latest
 
       - name: Deploy vehicle-service to Cloud Run
-        if: steps.filter.outputs.vehicle-service == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.filter.outputs.vehicle-service == 'true'
         run: |
           gcloud run deploy vehicle-service \
             --image=asia-southeast1-docker.pkg.dev/ev-cost-sharing-496416/ev-sharing-repo/vehicle-service:latest \
