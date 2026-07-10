@@ -11,13 +11,13 @@ spring:
     admin:
       url: ${SPRING_DATASOURCE_ADMIN_URL:jdbc:mysql://reservation-admin-mysql:3306/co_ownership_booking_admin?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
       username: ${SPRING_DATASOURCE_ADMIN_USERNAME:root}
-      password: ${SPRING_DATASOURCE_ADMIN_PASSWORD:password}
+      password: ${SPRING_DATASOURCE_ADMIN_PASSWORD:${SPRING_DATASOURCE_PASSWORD:password}}
       driver-class-name: com.mysql.cj.jdbc.Driver
     
     booking:
       url: ${SPRING_DATASOURCE_BOOKING_URL:jdbc:mysql://reservation-mysql:3306/co_ownership_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
       username: ${SPRING_DATASOURCE_BOOKING_USERNAME:root}
-      password: ${SPRING_DATASOURCE_BOOKING_PASSWORD:password}
+      password: ${SPRING_DATASOURCE_BOOKING_PASSWORD:${SPRING_DATASOURCE_PASSWORD:password}}
       driver-class-name: com.mysql.cj.jdbc.Driver
   
   jpa:
