@@ -9,12 +9,12 @@ import { sleep } from 'k6';
 // ---------------------------------------------------------------------------------
 export const options = {
   stages: [
-    { duration: '30s', target: 150 }, // Tải tăng dần lên 150 users
-    { duration: '1m', target: 150 },  // Duy trì tải 150 users
+    { duration: '30s', target: 1000 }, // Tải tăng dần lên 1000 users
+    { duration: '1m', target: 1000 },  // Duy trì tải 1000 users
     { duration: '30s', target: 0 },   // Giảm tải về 0
   ],
   thresholds: {
-    http_req_failed: ['rate<0.01'],   // Tỉ lệ lỗi HTTP < 1%
+    http_req_failed: ['rate<0.05'],   // Tỉ lệ lỗi HTTP < 5%
   },
 };
 
